@@ -1,0 +1,139 @@
+---
+title: ANOVA/regression tables in R
+subtitle: Cheatsheet
+date: today
+lightbox: true
+---
+
+```{r setup}
+#| include: false
+
+if (!require("Require")) {
+    install.packages("Require")
+    require("Require")
+}
+Require(c(
+    car, emmeans, gt, gtsummary, tidyverse, palmerpenguins, sjPlot
+))
+possums <- readxl::read_excel("possum_bw.xlsx")
+```
+
+
+::: {.grid}
+::: {.g-col-6}
+{{< include _license.qmd >}}
+
+::: {.callout-note collapse="false"}
+## Assumed knowledge
+- You know how to install and load packages in R.
+- You know how to import data into R.
+- You recognise data frames and vectors.
+- **You have performed a GLM or ANOVA, and now wish to create a table.**
+:::
+:::
+::: {.g-col-6}
+{{< include _tidy.qmd >}}
+
+::: {.callout-warning}
+## Data
+For this cheatsheet we will use data from the penguins dataset from the `palmerpenguins` package. You may need to install this package:
+
+```{r}
+#| eval: false
+install.packages("palmerpenguins")
+```
+
+:::
+:::
+:::
+
+
+## About
+This cheatsheet will show you how to quickly create "simple" HTML tables for ANOVA and regression models in R. Note that these tables are probably *not* publication-ready. At some point it might be easier to either export the tables here to a document processing software such as Word or Excel for further formatting. Other packages such as `kableExtra`, `stargazer` and `huxtable` can also be used to format tables in R but are beyond the scope of this cheatsheet.
+
+### R packages used
+`tidyverse` `car` `emmeans` `gt` `gtsummary` `sjPlot` `palmerpenguins`
+
+## Code
+::: panel-tabset
+## ANOVA table
+We will format the ANOVA table below.
+```{r}
+#| code-fold: true
+# First, generate the ANOVA output
+fit01 <-
+    penguins |>
+    lm(bill_length_mm ~ species * sex, data = _) |>
+    Anova()
+# Rename the predictors/terms if needed
+rownames(fit01) <- (c("Species", "Sex", "Species:Sex", "Residuals"))
+fit01
+```
+
+```{r}
+#| code-fold: false
+table1 <-
+    gt(fit01, rownames_to_stub = TRUE) |> # <1>
+    sub_missing(missing_text = "") |> # <2>
+    # bold any p-values less than 0.05
+    tab_style(
+        style = list(
+            cell_text(weight = "bold")),
+            locations = cells_body(columns = `Pr(>F)`, rows = `Pr(>F)` < 0.05)
+        ) |> # <3>
+    cols_label(`Df` = "df", `F value` = "F", `Pr(>F)` = "p") |> # <4>
+    fmt_number(columns = c(2, 4, 5), decimals = 2) |> # <5>
+    sub_small_vals(threshold = 0.001) # <6>
+table1
+```
+1. `rownames_to_stub` will use the rownames as the first column.
+2. `sub_missing` will replace missing values with an empty string.
+3. `tab_style` basically contains code to bold p-values less than 0.05.
+4. `cols_label` will rename the columns.
+5. `fmt_number` is used to round the numbers to 2 decimal places for columns 2 and 4.
+6. `sub_small_vals` can be used to define a threshold for rounding small values. In this case any value less than 0.001 will be rounded to "<0.001".
+
+If you want to further customise the table, you can use the `gtsave()` function to save the table as a word/docx file.
+
+## Regression table (`sjPlot`)
+
+R has extensive support for GLMs. For example, the `sjPlot` package can be used to create regression tables automatically. We will format the regression table below.
+
+```{r}
+#| code-fold: true
+
+fit02 <-
+    penguins |>
+    lm(body_mass_g ~ bill_length_mm * flipper_length_mm, data = _) 
+summary(fit02)
+```
+
+
+```{r}
+table2 <-
+    fit02 |>
+    sjPlot::tab_model() 
+table2
+```
+
+
+## Regression table (`gtsummary`)
+The `gtsummary` package can also be used to create regression tables. We will format the regression table below.
+
+```{r}
+#| code-fold: true
+summary(fit02)
+```
+
+```{r}
+fit02 |>
+    tbl_regression() |>
+    add_glance_source_note(include = c(r.squared, adj.r.squared, nobs))
+```
+
+:::
+
+## Other resources
+
+None yet. *Stay tuned...*
+
